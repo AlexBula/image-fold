@@ -16,7 +16,7 @@ set(CMAKE_CXX_LINK_FLAGS "-ldlib -lpng -pthread")
 set(default_build_type "Release")
 
 
-add_executable(transform img-transform.cpp transform.cpp)
+add_executable(transform img-transform.cpp main.cpp)
 target_link_libraries(transform dlib::dlib)
 
 install(TARGETS DESTINATION .)

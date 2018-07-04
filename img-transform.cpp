@@ -9,13 +9,19 @@
 using namespace dlib;
 
 
-/********** GLOBAL VARIABLES *********/
 std::vector<std::mutex> D_Mutex(NR_P * NC_P); 
-/************************************/
 
 
 int from_2D_to_1D(int x, int y) {
     return x + (y * NR_P);
+}
+
+
+int scale_to_255(int v, int min_value, int max_value) {
+
+    float range = max_value - min_value;
+    int value = std::round((v - min_value) / (range) * RGB_RANGE * 1.0);
+    return value * (-1) + RGB_RANGE; // Reverse numbers 
 }
 
 
@@ -29,22 +35,30 @@ void rgb_distance(array2d<rgb_pixel> &img, int x, int y, int i, int j,
 }
 
 
-void compare_distance(array2d<rgb_pixel> &img, int i, int j, int dist, array2d<rgb_pixel> &result, std::vector<int> &distance_array) {
+void compare_distance(array2d<rgb_pixel> &img, int i, int j, int dist, 
+        array2d<rgb_pixel> &result, std::vector<int> &distance_array, 
+        std::vector<int> &picture_ids, int picture_id) {
 
+    /* Lock specific 'pixel' to compare its values */
     std::unique_lock<std::mutex> distance_lock(D_Mutex[from_2D_to_1D(i, j)]);
     if (distance_array[from_2D_to_1D(i, j)] < dist) {
 
         distance_array[from_2D_to_1D(i, j)] = dist;
+
         /* Save pixel in result image */
-        result[i-PADDING][j-PADDING].red = img[i][j].red;
-        result[i-PADDING][j-PADDING].green = img[i][j].green;
-        result[i-PADDING][j-PADDING].blue = img[i][j].blue;
+        result[i - PADDING][j - PADDING].red = img[i][j].red;
+        result[i - PADDING][j - PADDING].green = img[i][j].green;
+        result[i - PADDING][j - PADDING].blue = img[i][j].blue;
+
+        /* Save image id for depth map */
+        picture_ids[from_2D_to_1D(i, j)] = picture_id;
     }
     distance_lock.unlock();
 }
 
 
-void compute_distance(array2d<rgb_pixel> &img, int x, int y, array2d<rgb_pixel> &result, std::vector<int> &distance_array) {
+void compute_distance(array2d<rgb_pixel> &img, int x, int y, array2d<rgb_pixel> &result, 
+        std::vector<int> &distance_array, std::vector<int> &picture_ids, int picture_id) {
 
     int dist; 
     int red = 0, green = 0, blue = 0;
@@ -60,7 +74,7 @@ void compute_distance(array2d<rgb_pixel> &img, int x, int y, array2d<rgb_pixel> 
     green /= 8; 
     blue /= 8;
     dist = (red + green + blue) / 3; 
-    compare_distance(img, x, y, dist, result, distance_array);
+    compare_distance(img, x, y, dist, result, distance_array, picture_ids, picture_id);
 }
 
 
@@ -78,9 +92,9 @@ array2d<rgb_pixel> add_padding(array2d<rgb_pixel> &img) {
 }
 
 
-/* Process single image */
 void process_image(const std::string img_name, array2d<rgb_pixel> &result, 
-        std::vector<int> &distance_array, int index, int no_images) {
+        std::vector<int> &distance_array, std::vector<int> &picture_ids,
+        int picture_id, int no_images) {
 
     array2d<rgb_pixel> img;
     load_png(img, img_name);
@@ -89,23 +103,23 @@ void process_image(const std::string img_name, array2d<rgb_pixel> &result,
     /* For each pixel compute its distance to neighbours */
     for(int i = PADDING; i < NR; ++i) {
         for(int j = PADDING; j < NC; ++j){
-            compute_distance(img, i, j, result, distance_array);
+            compute_distance(img, i, j, result, distance_array, picture_ids, picture_id);
         }
     }
+
 }
 
 
-/* Get all image names from directory */
-bool get_images(std::vector<std::string> &filenames) {
+bool get_images(std::vector<std::string> &filenames, std::string &data_location) {
 
-    DIR *dirp = opendir("data");
+    DIR *dirp = opendir(data_location.c_str());
     if (dirp == NULL) return false;
 
     struct dirent *dp;
     while ((dp = readdir(dirp)) != NULL) {
-        std::string name = DATA_LOC;
+        std::string name = data_location;
         name += dp->d_name;
-        if (dp->d_name != "result.png" && name.find(".png") != std::string::npos) filenames.push_back(name); 
+        if (name.find("result.png") == std::string::npos && name.find(".png") != std::string::npos) filenames.push_back(name); 
     }
     closedir(dirp);
 
@@ -117,3 +131,15 @@ bool get_images(std::vector<std::string> &filenames) {
 }
 
 
+void draw_depth_map(array2d<rgb_pixel> &depth_map, std::vector<int> &picture_ids, int no_images) {
+
+    /* Calculate depth_map based on id of used picture */
+    for(int i = PADDING; i < NR; ++i) {
+        for(int j = PADDING; j < NC; ++j) {
+            int value = scale_to_255(picture_ids[from_2D_to_1D(i, j)], 0, no_images - 1);
+            depth_map[i - PADDING][j - PADDING].red = value;
+            depth_map[i - PADDING][j - PADDING].green = value;
+            depth_map[i - PADDING][j - PADDING].blue = value;
+        }
+    }
+}
