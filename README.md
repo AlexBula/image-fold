@@ -23,12 +23,12 @@ two _png_ images: **_focused_image.png_** and **_depth_map.png_**.
 ## Dataset
 
 Example images with different focus points:
-![alt text](https://i.imgur.com/a/vSucvHO.png)
+![alt text](https://i.imgur.com/VxBvnvs.jpg)
 
-![alt text](https://i.imgur.com/a/qi7W7NK.png)
+![alt text](https://i.imgur.com/vpUrRLY.jpg)
 
 ## My result
 
 Focused image
-![alt text](https://i.imgur.com/a/Y4bXQH7.png)
+![alt text](https://i.imgur.com/DmTzBWC.jpg)
 
