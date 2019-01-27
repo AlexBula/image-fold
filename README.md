@@ -20,3 +20,15 @@ Project requires: `dlib`, `threads` libraries and `C++14`
 Simply run executable file `transform`. As the result it will produce 
 two _png_ images: **_focused_image.png_** and **_depth_map.png_**.
 
+## Dataset
+
+Example images with different focus points:
+![alt text](https://imgur.com/a/vSucvHO)
+
+![alt text](https://imgur.com/a/qi7W7NK)
+
+## My result
+
+Focused image
+![alt text](https://imgur.com/a/Y4bXQH7)
+
